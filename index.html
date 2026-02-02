@@ -1,0 +1,861 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OpenTable Nutri-Connect</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        @keyframes fade-in {
+            from { opacity: 0; transform: translateY(1rem); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .animate-in {
+            animation: fade-in 0.7s ease-out;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+        const { ChefHat, Flame, MapPin, Calendar, ChevronRight, Trophy, Utensils, CheckCircle, XCircle, Settings, Search, Star, Leaf, Info, Clock, ArrowRight } = window.lucide;
+
+        // Lucide Icons Component Wrapper
+        const LucideIcon = ({ icon: Icon, ...props }) => {
+            useEffect(() => {
+                if (window.lucide) {
+                    window.lucide.createIcons();
+                }
+            }, []);
+            return <i data-lucide={Icon} {...props}></i>;
+        };
+
+        // --- MOCK DATA ---
+
+        const USER_PROFILE = {
+          name: "Alex",
+          level: 5,
+          title: "Local Explorer",
+          xp: 750,
+          nextLevelXp: 1000,
+          streak: 12,
+          goals: {
+            type: "Muscle Gain",
+            calories: 2200,
+            protein: 160
+          }
+        };
+
+        const CHALLENGES = [
+          { id: 1, title: "Steakhouse Survivor", progress: 1, total: 3, icon: "🥩", color: "bg-red-100 text-red-600" },
+          { id: 2, title: "Green Thumb", progress: 4, total: 5, icon: "🥗", color: "bg-green-100 text-green-600" },
+        ];
+
+        const HISTORY = [
+          { id: 1, restaurant: "The Burger Joint", date: "Yesterday", grade: "B", score: "+20 XP", status: "success" },
+          { id: 2, restaurant: "Sushi Zen", date: "Mon", grade: "A+", score: "+150 XP", status: "success" },
+          { id: 3, restaurant: "Pasta Palace", date: "Sun", grade: "C", score: "+5 XP", status: "warning" },
+        ];
+
+        const RECOMMENDED_DISHES = [
+          { 
+            id: 1, 
+            name: "Tandoori Chicken", 
+            restaurant: "Bukhara", 
+            cals: 320, 
+            protein: "42g", 
+            match: 98, 
+            tags: ["High Protein", "Low Carb"],
+            image: "https://images.unsplash.com/photo-1599487488170-d11ec9c172f0?auto=format&fit=crop&w=800&q=80"
+          },
+          { 
+            id: 2, 
+            name: "Grilled Chicken Parmigiana", 
+            restaurant: "Olive Garden", 
+            cals: 480, 
+            protein: "38g", 
+            match: 95, 
+            tags: ["High Protein", "Italian"],
+            image: "https://images.unsplash.com/photo-1632778149955-e80f8ceca2e8?auto=format&fit=crop&w=800&q=80"
+          },
+          { 
+            id: 3, 
+            name: "Paneer Tikka", 
+            restaurant: "Indian Accent", 
+            cals: 280, 
+            protein: "22g", 
+            match: 92, 
+            tags: ["Vegetarian", "High Protein"],
+            image: "https://images.unsplash.com/photo-1631452180519-c014fe946bc7?auto=format&fit=crop&w=800&q=80"
+          },
+          { 
+            id: 4, 
+            name: "Margherita Pizza (Thin Crust)", 
+            restaurant: "Pizzeria Napoli", 
+            cals: 550, 
+            protein: "24g", 
+            match: 88, 
+            tags: ["Vegetarian", "Italian"],
+            image: "https://images.unsplash.com/photo-1574071318508-1cdbab80d002?auto=format&fit=crop&w=800&q=80"
+          },
+          { 
+            id: 5, 
+            name: "Dal Tadka with Brown Rice", 
+            restaurant: "Masala Library", 
+            cals: 380, 
+            protein: "18g", 
+            match: 85, 
+            tags: ["Vegan", "High Fiber"],
+            image: "https://images.unsplash.com/photo-1546833999-b9f581a1996d?auto=format&fit=crop&w=800&q=80"
+          },
+          { 
+            id: 6, 
+            name: "Spaghetti Aglio e Olio", 
+            restaurant: "Trattoria", 
+            cals: 420, 
+            protein: "16g", 
+            match: 82, 
+            tags: ["Vegan", "Italian"],
+            image: "https://images.unsplash.com/photo-1621996346565-e3dbc646d9a9?auto=format&fit=crop&w=800&q=80"
+          }
+        ];
+
+        const TODAY_NUTRITION = {
+          calories: { current: 1450, goal: 2200, unit: "kcal" },
+          protein: { current: 98, goal: 160, unit: "g" },
+          carbs: { current: 145, goal: 220, unit: "g" },
+          fats: { current: 52, goal: 73, unit: "g" },
+          meals: [
+            { time: "Breakfast", name: "Sushi Zen", date: "Mon", cals: 380, protein: 32, grade: "A+", restaurant: true },
+            { time: "Lunch", name: "Pasta Palace", date: "Sun", cals: 420, protein: 18, grade: "C", restaurant: true },
+            { time: "Dinner", name: "The Burger Joint", date: "Yesterday", cals: 650, protein: 48, grade: "B", restaurant: true },
+          ]
+        };
+
+        // --- COMPONENTS ---
+
+        const Icon = ({ name, size = 24, className = "", ...props }) => {
+          useEffect(() => {
+            if (window.lucide) {
+              window.lucide.createIcons();
+            }
+          });
+          return <i data-lucide={name} className={className} style={{ width: size, height: size }} {...props}></i>;
+        };
+
+        const MacroCardsOverview = ({ nutrition }) => {
+          const MacroCard = ({ label, current, goal, unit, color, icon }) => {
+            const percentage = Math.round((current / goal) * 100);
+            const remaining = goal - current;
+            
+            return (
+              <div className="bg-white rounded-xl p-4 border border-gray-100 flex-1">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center space-x-2">
+                    <div className={`p-2 rounded-lg ${color.replace('text', 'bg').replace('600', '100')}`}>
+                      <Icon name={icon} size={18} className={color} />
+                    </div>
+                    <span className="text-sm font-bold text-gray-700">{label}</span>
+                  </div>
+                  <span className={`text-xs font-bold ${percentage >= 100 ? 'text-emerald-600' : 'text-gray-400'}`}>
+                    {percentage}%
+                  </span>
+                </div>
+                
+                <div className="mb-2">
+                  <div className="flex items-baseline space-x-1">
+                    <span className="text-2xl font-bold text-gray-800">{current}</span>
+                    <span className="text-sm text-gray-400">/ {goal} {unit}</span>
+                  </div>
+                </div>
+                
+                <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden mb-2">
+                  <div 
+                    className={`h-full rounded-full transition-all duration-500 ${color.replace('text', 'bg')}`}
+                    style={{ width: `${Math.min(percentage, 100)}%` }}
+                  ></div>
+                </div>
+                
+                <p className="text-xs text-gray-500">
+                  {remaining > 0 ? `${remaining}${unit} remaining` : `Goal achieved! 🎉`}
+                </p>
+              </div>
+            );
+          };
+
+          return (
+            <div className="bg-gradient-to-br from-white to-gray-50 rounded-2xl shadow-sm border border-gray-100 p-6 mb-6">
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-800 flex items-center space-x-2">
+                    <Icon name="pie-chart" size={28} className="text-red-600" />
+                    <span>Today's nutrition</span>
+                  </h2>
+                  <p className="text-sm text-gray-500 mt-1">Track your macros and stay on target</p>
+                </div>
+                <button className="flex items-center space-x-2 text-red-600 bg-red-50 px-4 py-2 rounded-lg font-semibold text-sm hover:bg-red-100 transition-colors">
+                  <Icon name="plus-circle" size={16} />
+                  <span>Add meal</span>
+                </button>
+              </div>
+
+              {/* Macro Cards Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <MacroCard 
+                  label="Calories" 
+                  current={nutrition.calories.current} 
+                  goal={nutrition.calories.goal} 
+                  unit={nutrition.calories.unit}
+                  color="text-orange-600"
+                  icon="flame"
+                />
+                <MacroCard 
+                  label="Protein" 
+                  current={nutrition.protein.current} 
+                  goal={nutrition.protein.goal} 
+                  unit={nutrition.protein.unit}
+                  color="text-blue-600"
+                  icon="drumstick"
+                />
+                <MacroCard 
+                  label="Carbs" 
+                  current={nutrition.carbs.current} 
+                  goal={nutrition.carbs.goal} 
+                  unit={nutrition.carbs.unit}
+                  color="text-purple-600"
+                  icon="wheat"
+                />
+                <MacroCard 
+                  label="Fats" 
+                  current={nutrition.fats.current} 
+                  goal={nutrition.fats.goal} 
+                  unit={nutrition.fats.unit}
+                  color="text-amber-600"
+                  icon="droplet"
+                />
+              </div>
+            </div>
+          );
+        };
+
+        const TodaysMealsTimeline = ({ nutrition }) => {
+          return (
+            <div className="bg-white rounded-2xl shadow-sm p-6 border border-gray-100 mt-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-bold text-gray-700 flex items-center space-x-2">
+                  <Icon name="utensils" size={16} className="text-gray-600" />
+                  <span>Logged meals</span>
+                </h3>
+                <span className="text-xs text-gray-400">{nutrition.meals.length} meals</span>
+              </div>
+              
+              <div className="space-y-3">
+                {nutrition.meals.map((meal, index) => {
+                  // Determine grade styling
+                  const gradeStyle = meal.grade === 'A+' ? 'bg-emerald-50 text-emerald-600' : 
+                                    meal.grade === 'B' ? 'bg-yellow-50 text-yellow-600' : 
+                                    'bg-orange-50 text-orange-600';
+                  
+                  return (
+                    <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer group">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center border border-gray-200 group-hover:border-red-200 transition-colors">
+                          <span className="text-lg">{index === 0 ? '🍱' : index === 1 ? '🍝' : '🍔'}</span>
+                        </div>
+                        <div>
+                          <p className="text-sm font-bold text-gray-800">{meal.name}</p>
+                          <p className="text-xs text-gray-400">{meal.date}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <div className={`text-xs font-bold px-2 py-0.5 rounded ${gradeStyle}`}>
+                          {meal.grade}
+                        </div>
+                        <div className="flex items-center space-x-2 text-xs">
+                          <span className="font-medium text-orange-600 bg-orange-50 px-2 py-1 rounded">
+                            {meal.cals} kcal
+                          </span>
+                          <span className="font-medium text-blue-600 bg-blue-50 px-2 py-1 rounded">
+                            {meal.protein}g protein
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+                
+                <div className="flex items-center justify-center p-3 bg-gradient-to-r from-red-50 to-orange-50 rounded-lg border-2 border-dashed border-red-200 hover:border-red-300 transition-colors cursor-pointer group">
+                  <Icon name="plus" size={16} className="text-red-600 mr-2 group-hover:scale-110 transition-transform" />
+                  <span className="text-sm font-semibold text-red-600">Log meal</span>
+                </div>
+              </div>
+            </div>
+          );
+        };
+
+        const AvatarWidget = ({ profile }) => {
+          // Determine chef's mood based on streak and XP progress
+          const getChefMood = () => {
+            const xpProgress = (profile.xp / profile.nextLevelXp) * 100;
+            
+            if (profile.streak >= 10 && xpProgress >= 70) {
+              return { 
+                emoji: "🔥", 
+                message: "On fire!", 
+                color: "from-orange-500 to-red-500",
+                bgOverlay: "from-orange-500/20 to-red-500/20"
+              };
+            } else if (profile.streak >= 7) {
+              return { 
+                emoji: "😄", 
+                message: "Amazing streak!", 
+                color: "from-emerald-500 to-teal-500",
+                bgOverlay: "from-emerald-500/20 to-teal-500/20"
+              };
+            } else if (profile.streak >= 3) {
+              return { 
+                emoji: "😊", 
+                message: "Keep it up!", 
+                color: "from-blue-500 to-indigo-500",
+                bgOverlay: "from-blue-500/20 to-indigo-500/20"
+              };
+            } else {
+              return { 
+                emoji: "💪", 
+                message: "Let's go!", 
+                color: "from-gray-500 to-gray-600",
+                bgOverlay: "from-gray-500/20 to-gray-600/20"
+              };
+            }
+          };
+
+          const mood = getChefMood();
+
+          return (
+            <div className="rounded-2xl shadow-sm relative overflow-hidden">
+              {/* Chef Image - Top Banner */}
+              <div className="relative w-full overflow-hidden" style={{ height: '264px' }}>
+                <img 
+                  src="chef 1.png" 
+                  alt="Chef Buddy" 
+                  className="w-full h-full object-cover"
+                />
+
+                {/* Mood Emoji - Bottom Right */}
+                <div className="absolute bottom-3 right-3 text-3xl bg-white rounded-full p-2 shadow-lg">
+                  {mood.emoji}
+                </div>
+              </div>
+
+              {/* Content Section */}
+              <div className="p-6 text-center bg-white rounded-b-2xl">
+                {/* Name & Title */}
+                <div className="mt-1">
+                  <h2 className="text-xl font-bold text-gray-800">{profile.name}</h2>
+                  <p className="text-sm text-gray-500 font-medium uppercase tracking-wide">{profile.title}</p>
+                </div>
+
+                {/* Mood Message */}
+                <div className={`mt-3 inline-flex items-center space-x-1 bg-gradient-to-r ${mood.color} px-3 py-1 rounded-full`}>
+                  <span className="text-xs font-bold text-white">{mood.message}</span>
+                </div>
+                
+                {/* XP Progress Bar */}
+                <div className="mt-4 px-2">
+                  <div className="flex justify-between text-xs text-gray-400 mb-2">
+                    <span className="font-medium">{profile.xp} XP</span>
+                    <span className="font-medium">{profile.nextLevelXp} XP</span>
+                  </div>
+                  <div className="relative w-full bg-gray-100 rounded-full h-4 overflow-hidden shadow-inner">
+                    <div 
+                      className={`bg-gradient-to-r ${mood.color} h-full rounded-full flex items-center justify-end pr-1`}
+                      style={{ width: `${(profile.xp / profile.nextLevelXp) * 100}%` }}
+                    >
+                      <span className="text-[10px] font-bold text-white drop-shadow">
+                        {Math.round((profile.xp / profile.nextLevelXp) * 100)}%
+                      </span>
+                    </div>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-2 font-medium">
+                    {profile.nextLevelXp - profile.xp} XP to Level {profile.level + 1}
+                  </p>
+                </div>
+              </div>
+            </div>
+          );
+        };
+
+        const FiltersWidget = ({ activeFilters, toggleFilter }) => {
+          const filters = ["High Protein", "Low Carb", "Gluten Free", "Under 600kcal", "Vegetarian"];
+          
+          return (
+            <div className="bg-white rounded-2xl shadow-sm p-6 border border-gray-100 mt-6 sticky top-6">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="font-bold text-gray-700">Dietary Focus</h3>
+                <Icon name="settings" size={16} className="text-gray-400 cursor-pointer hover:text-gray-600" />
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {filters.map(filter => (
+                  <button
+                    key={filter}
+                    onClick={() => toggleFilter(filter)}
+                    className={`px-3 py-2 rounded-xl text-sm font-medium transition-all ${
+                      activeFilters.includes(filter)
+                        ? "bg-emerald-100 text-emerald-700 border-emerald-200 border"
+                        : "bg-gray-50 text-gray-500 border border-gray-100 hover:bg-gray-100"
+                    }`}
+                  >
+                    {filter}
+                  </button>
+                ))}
+              </div>
+            </div>
+          );
+        };
+
+        const HeroCard = ({ context }) => {
+          // STATE 2: PRE-DINNER (The Menu Navigator)
+          if (context === "pre-dinner") {
+            return (
+              <div className="relative bg-gray-900 rounded-2xl overflow-hidden shadow-lg mb-8 text-white min-h-96">
+                <img 
+                  src="https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=1350&q=80" 
+                  alt="Bukhara" 
+                  className="absolute inset-0 w-full h-full object-cover opacity-40"
+                />
+                <div className="absolute inset-0 bg-gradient-to-r from-black via-black/70 to-transparent"></div>
+                <div className="relative z-10 p-8 py-10 max-w-lg">
+                  <div className="flex items-center space-x-2 text-orange-400 font-bold tracking-wider text-sm mb-3">
+                    <Icon name="clock" size={16} />
+                    <span>TONIGHT AT 7:30 PM</span>
+                  </div>
+                  <h1 className="text-3xl font-bold mb-3">Dinner at Bukhara</h1>
+                  <p className="text-gray-300 mb-6 leading-relaxed">You have 650 kcal budgeted. Based on your "Muscle Gain" goal, we found a perfect match.</p>
+                  
+                  <div className="bg-white/10 backdrop-blur-md rounded-xl p-4 border border-white/20 flex items-center space-x-4 mb-6 cursor-pointer hover:bg-white/20 transition-all">
+                    <img 
+                      src="https://images.unsplash.com/photo-1599487488170-d11ec9c172f0?auto=format&fit=crop&w=150&q=80" 
+                      className="w-16 h-16 rounded-lg object-cover flex-shrink-0"
+                      alt="Dish"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center space-x-2 mb-1">
+                         <h4 className="font-bold text-lg">Tandoori Chicken</h4>
+                         <span className="bg-green-500/20 text-green-400 text-xs px-2 py-0.5 rounded border border-green-500/30 whitespace-nowrap">98% Match</span>
+                      </div>
+                      <p className="text-sm text-gray-300">320 kcal • 42g Protein • Low Carb</p>
+                    </div>
+                    <div className="ml-auto flex-shrink-0">
+                        <div className="bg-white text-black p-2 rounded-full hover:scale-110 transition-transform">
+                            <Icon name="check-circle" size={20} />
+                        </div>
+                    </div>
+                  </div>
+
+                  <div className="flex space-x-3">
+                     <button className="bg-red-600 hover:bg-red-700 text-white px-6 py-2.5 rounded-lg font-semibold flex items-center space-x-2 transition-colors">
+                        <Icon name="utensils" size={18} />
+                        <span>View Full Menu</span>
+                     </button>
+                     <button className="bg-white/10 hover:bg-white/20 text-white px-6 py-2.5 rounded-lg font-semibold transition-colors">
+                        See Alternatives
+                     </button>
+                  </div>
+                </div>
+              </div>
+            );
+          }
+
+          // STATE 3: POST-DINNER (The Verification)
+          if (context === "post-dinner") {
+            return (
+              <div className="bg-white rounded-2xl p-8 mb-8 border border-emerald-100 shadow-sm relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-40 h-40 bg-emerald-50 rounded-bl-full -mr-10 -mt-10 z-0"></div>
+                <div className="relative z-10 flex flex-col md:flex-row items-center justify-between">
+                    <div className="max-w-lg">
+                        <div className="flex items-center space-x-2 text-emerald-600 font-bold tracking-wider text-sm mb-3">
+                            <Icon name="check-circle" size={16} />
+                            <span>VERIFY YOUR MEAL</span>
+                        </div>
+                        <h2 className="text-2xl font-bold text-gray-800 mb-2">How was Bukhara?</h2>
+                        <p className="text-gray-600 mb-6">You planned to eat the <span className="font-bold text-gray-800">Tandoori Chicken</span>. Did you stick to the plan?</p>
+                        
+                        <div className="flex items-center space-x-4">
+                            <button className="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-3 rounded-xl font-bold shadow-md shadow-emerald-200 transition-all hover:-translate-y-1">
+                                <span>Yes, I ate it (+50 XP)</span>
+                            </button>
+                            <button className="bg-white border-2 border-gray-200 text-gray-500 hover:border-gray-300 px-6 py-3 rounded-xl font-bold transition-colors">
+                                I ate something else
+                            </button>
+                        </div>
+                    </div>
+                    <div className="hidden md:block">
+                        <div className="w-24 h-24 bg-emerald-100 rounded-full flex items-center justify-center">
+                            <span className="text-4xl">😋</span>
+                        </div>
+                    </div>
+                </div>
+              </div>
+            );
+          }
+
+          // STATE 4: PLANNING (Empty State)
+          if (context === "planning") {
+            return (
+              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl p-8 mb-8 border border-blue-100 flex items-center justify-between shadow-sm">
+                <div className="max-w-md">
+                  <div className="flex items-center space-x-2 text-blue-600 font-bold tracking-wider text-sm mb-2">
+                    <Icon name="calendar" size={16} />
+                    <span>WEEKEND AHEAD</span>
+                  </div>
+                  <h2 className="text-2xl font-bold text-gray-800 mb-2">Your Saturday is wide open</h2>
+                  <p className="text-gray-600 mb-6">Planning ahead leads to 80% better choices. People with your "Muscle Gain" goal love <strong>Bukhara</strong> and <strong>Olive Garden</strong>.</p>
+                  <div className="flex space-x-3">
+                    <button className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-bold shadow-md shadow-blue-200 flex items-center space-x-2 transition-all hover:-translate-y-1">
+                      <Icon name="search" size={18} />
+                      <span>Find a Healthy Spot</span>
+                    </button>
+                  </div>
+                </div>
+                <div className="hidden md:block">
+                   <div className="bg-white p-4 rounded-xl shadow-lg transform rotate-3">
+                      <div className="flex items-center space-x-2 mb-2">
+                          <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-bold text-xs">Sat</div>
+                          <div className="h-2 w-16 bg-gray-100 rounded"></div>
+                      </div>
+                      <div className="h-2 w-24 bg-gray-100 rounded mb-1"></div>
+                      <div className="h-2 w-20 bg-gray-100 rounded"></div>
+                   </div>
+                </div>
+              </div>
+            );
+          }
+
+          // DEFAULT STATE 1: DISCOVERY (Morning)
+          return (
+            <div className="bg-gradient-to-r from-orange-50 to-red-50 rounded-2xl p-8 mb-8 border border-orange-100 flex items-center justify-between">
+              <div className="max-w-md">
+                <h2 className="text-2xl font-bold text-gray-800 mb-2">Where to for lunch, Alex?</h2>
+                <p className="text-gray-600 mb-6">You've hit your protein goal 3 days in a row. Keep the streak alive!</p>
+                <div className="flex space-x-3">
+                  <button className="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-xl font-bold shadow-md shadow-red-200 flex items-center space-x-2 transition-all hover:-translate-y-1">
+                    <Icon name="search" size={18} />
+                    <span>Find High-Protein Spots</span>
+                  </button>
+                </div>
+              </div>
+              <div className="hidden md:block">
+                <img src="https://cdn-icons-png.flaticon.com/512/3480/3480823.png" alt="Healthy Map" className="w-48 opacity-90 drop-shadow-lg" />
+              </div>
+            </div>
+          );
+        };
+
+        const FeedCard = ({ dish }) => (
+          <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 flex items-start space-x-4 mb-4 hover:shadow-md transition-shadow cursor-pointer group">
+            <div className="w-24 h-24 bg-gray-200 rounded-lg overflow-hidden flex-shrink-0 relative">
+              <img 
+                src={dish.image} 
+                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" 
+                alt={dish.name} 
+              />
+            </div>
+            <div className="flex-1">
+              <div className="flex justify-between items-start">
+                <div>
+                   <h4 className="font-bold text-gray-800 group-hover:text-red-600 transition-colors">{dish.name}</h4>
+                   <div className="text-sm text-gray-500 flex items-center space-x-1">
+                      <span>at {dish.restaurant}</span>
+                      <span>•</span>
+                      <span className="text-gray-400">0.4 mi away</span>
+                   </div>
+                </div>
+                <div className="bg-emerald-100 text-emerald-700 text-xs font-bold px-2 py-1 rounded-md">
+                    {dish.match}% Match
+                </div>
+              </div>
+              
+              <div className="mt-2 flex space-x-2">
+                {dish.tags.map(tag => (
+                  <span key={tag} className="text-[10px] uppercase font-semibold bg-gray-50 text-gray-500 px-2 py-1 rounded border border-gray-100">
+                    {tag}
+                  </span>
+                ))}
+              </div>
+
+              <div className="mt-3 flex items-center space-x-4 text-xs font-medium text-gray-600">
+                <span className="flex items-center text-orange-500"><Icon name="flame" size={12} className="mr-1" /> {dish.cals} kcal</span>
+                <span className="flex items-center text-blue-500"><Icon name="leaf" size={12} className="mr-1" /> {dish.protein} Protein</span>
+              </div>
+            </div>
+            <button className="self-center p-2 rounded-full border border-gray-200 text-gray-400 hover:bg-red-50 hover:text-red-500 hover:border-red-200 transition-all">
+               <Icon name="check-circle" size={20} />
+            </button>
+          </div>
+        );
+
+        const RightPanel = () => {
+          const days = [
+            { day: "M", date: "10", status: "success" },
+            { day: "T", date: "11", status: "success" },
+            { day: "W", date: "12", status: "success" },
+            { day: "T", date: "13", status: "today" },
+            { day: "F", date: "14", status: "future", event: "Bukhara" },
+            { day: "S", date: "15", status: "future" },
+            { day: "S", date: "16", status: "future" },
+          ];
+
+          return (
+            <div className="space-y-6">
+              {/* Week Calendar & Dining Timeline - Merged */}
+              <div className="bg-white rounded-2xl shadow-sm p-6 border border-gray-100">
+                <h3 className="font-bold text-gray-700 mb-4 flex items-center justify-between">
+                  <span>Weekly overview</span>
+                  <Icon name="calendar" size={16} className="text-gray-400" />
+                </h3>
+                
+                {/* Week Calendar */}
+                <div className="flex justify-between items-center mb-6 pb-6 border-b border-gray-100 gap-1">
+                  {days.map((d, i) => (
+                    <div key={i} className="flex flex-col items-center group cursor-pointer flex-1">
+                      <span className={`text-[10px] font-medium mb-1.5 ${d.status === 'today' ? 'text-red-500' : 'text-gray-400'}`}>{d.day}</span>
+                      <div className={`w-7 h-10 rounded-full flex items-center justify-center text-[10px] font-bold transition-all relative
+                        ${d.status === 'success' ? 'bg-emerald-100 text-emerald-600' : ''}
+                        ${d.status === 'missed' ? 'bg-gray-100 text-gray-400' : ''}
+                        ${d.status === 'today' ? 'bg-red-500 text-white shadow-md shadow-red-200 scale-105' : ''}
+                        ${d.status === 'future' ? 'bg-white border border-dashed border-gray-300 text-gray-400' : ''}
+                      `}>
+                        {d.status === 'future' && d.event ? <Icon name="utensils" size={10} className="text-orange-500" /> : d.date}
+                        
+                        {/* Tooltip for Event */}
+                        {d.event && (
+                          <div className="absolute -top-8 bg-gray-800 text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
+                            Res: {d.event}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Dining Timeline */}
+                <h4 className="font-bold text-gray-700 text-sm mb-4">Activity</h4>
+                <div className="relative pl-4 border-l-2 border-gray-100 space-y-6">
+                  {/* Upcoming Reservation */}
+                  <div className="relative">
+                     <div className="absolute -left-[21px] top-1 w-3 h-3 rounded-full border-2 border-dashed border-blue-400 bg-white shadow-sm"></div>
+                     <div className="flex justify-between items-start">
+                        <div>
+                           <p className="text-sm font-bold text-gray-800">Bukhara</p>
+                           <p className="text-xs text-gray-400">Friday</p>
+                        </div>
+                        <div className="text-xs font-bold px-2 py-0.5 rounded bg-blue-50 text-blue-600 border border-dashed border-blue-200">
+                           Upcoming
+                        </div>
+                     </div>
+                     <p className="text-xs text-blue-500 mt-1 font-medium">Reservation at 7:30 PM</p>
+                  </div>
+                  
+                  {/* Past Activity */}
+                  {HISTORY.map((h, i) => (
+                    <div key={i} className="relative">
+                       <div className={`absolute -left-[21px] top-1 w-3 h-3 rounded-full border-2 border-white shadow-sm ${h.status === 'success' ? 'bg-emerald-500' : 'bg-yellow-400'}`}></div>
+                       <div className="flex justify-between items-start">
+                          <div>
+                             <p className="text-sm font-bold text-gray-800">{h.restaurant}</p>
+                             <p className="text-xs text-gray-400">{h.date}</p>
+                          </div>
+                          <div className={`text-xs font-bold px-2 py-0.5 rounded ${h.status === 'success' ? 'bg-emerald-50 text-emerald-600' : 'bg-yellow-50 text-yellow-600'}`}>
+                             {h.grade}
+                          </div>
+                       </div>
+                       <p className="text-xs text-orange-500 mt-1 font-medium">{h.score}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Active Challenges */}
+              <div className="bg-white rounded-2xl shadow-sm p-6 border border-gray-100">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-bold text-gray-700">Active quests</h3>
+                  <Icon name="chevron-right" size={16} className="text-gray-400" />
+                </div>
+                <div className="space-y-4">
+                  {CHALLENGES.map(c => (
+                    <div key={c.id}>
+                      <div className="flex justify-between items-center mb-1">
+                        <span className="text-sm font-semibold flex items-center">{c.icon} <span className="ml-2">{c.title}</span></span>
+                        <span className="text-xs text-gray-400">{c.progress}/{c.total}</span>
+                      </div>
+                      <div className="w-full bg-gray-100 rounded-full h-2">
+                        <div className={`h-full rounded-full ${c.color.replace('text', 'bg').split(' ')[0]}`} style={{ width: `${(c.progress/c.total)*100}%` }}></div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <button className="w-full mt-4 text-xs font-bold text-red-600 bg-red-50 py-2 rounded-lg hover:bg-red-100 transition-colors">
+                  + Join new challenge
+                </button>
+              </div>
+
+              {/* Trophy Case Teaser */}
+              <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl shadow-sm p-6 text-white relative overflow-hidden group cursor-pointer">
+                 <div className="absolute top-0 right-0 p-4 opacity-10">
+                    <Icon name="trophy" size={64} />
+                 </div>
+                 <h3 className="font-bold text-lg mb-1 relative z-10">Trophy room</h3>
+                 <p className="text-xs text-gray-400 mb-4 relative z-10">You're 1 steakhouse visit away from "The Carnivore" badge.</p>
+                 <div className="flex space-x-2 relative z-10">
+                    <div className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center border border-white/20 text-xl" title="Local Explorer">🧭</div>
+                    <div className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center border border-white/20 text-xl" title="Macro Master">⚖️</div>
+                    <div className="w-10 h-10 bg-white/5 rounded-full flex items-center justify-center border border-dashed border-white/20 text-xs text-gray-500 group-hover:bg-white/10 transition-colors">
+                      +3
+                    </div>
+                 </div>
+              </div>
+            </div>
+          );
+        };
+
+        // --- MAIN APP COMPONENT ---
+
+        const App = () => {
+          const [context, setContext] = useState("discovery");
+          const [activeFilters, setActiveFilters] = useState(["High Protein"]);
+
+          const toggleFilter = (filter) => {
+            setActiveFilters(prev => 
+              prev.includes(filter) 
+                ? prev.filter(f => f !== filter) 
+                : [...prev, filter]
+            );
+          };
+
+          useEffect(() => {
+            // Small delay to ensure DOM is ready
+            const timer = setTimeout(() => {
+              if (window.lucide) {
+                window.lucide.createIcons();
+              }
+            }, 10);
+            
+            return () => clearTimeout(timer);
+          }, [context]);
+
+          return (
+            <div className="min-h-screen bg-gray-50 font-sans text-gray-900 pb-12" key={context}>
+              {/* Navigation Bar */}
+              <nav className="bg-white border-b border-gray-200 sticky top-0 z-50">
+                <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <div className="bg-red-600 text-white p-1.5 rounded-lg">
+                       <div className="w-4 h-4 rounded-full border-2 border-white"></div>
+                    </div>
+                    <span className="text-xl font-bold tracking-tight">OpenTable <span className="font-normal text-gray-500">| Nutri-Connect</span></span>
+                  </div>
+                </div>
+              </nav>
+
+              {/* Demo Controls (For Prototype Purpose) */}
+              <div className="fixed bottom-6 right-6 z-50 bg-gray-800 text-white p-4 rounded-xl shadow-2xl text-xs space-y-2 opacity-90 hover:opacity-100 transition-opacity">
+                <p className="font-bold text-gray-400 uppercase tracking-widest mb-2">Prototype Controls</p>
+                <button 
+                  onClick={() => setContext("discovery")}
+                  className={`block w-full text-left px-3 py-2 rounded ${context === 'discovery' ? 'bg-red-600 font-bold' : 'hover:bg-gray-700'}`}
+                >
+                  Scene 1: Morning Discovery
+                </button>
+                <button 
+                  onClick={() => setContext("pre-dinner")}
+                  className={`block w-full text-left px-3 py-2 rounded ${context === 'pre-dinner' ? 'bg-red-600 font-bold' : 'hover:bg-gray-700'}`}
+                >
+                  Scene 2: Pre-Reservation (Hero)
+                </button>
+                <button 
+                  onClick={() => setContext("post-dinner")}
+                  className={`block w-full text-left px-3 py-2 rounded ${context === 'post-dinner' ? 'bg-red-600 font-bold' : 'hover:bg-gray-700'}`}
+                >
+                  Scene 3: Post-Dining (Verify)
+                </button>
+                <button 
+                  onClick={() => setContext("planning")}
+                  className={`block w-full text-left px-3 py-2 rounded ${context === 'planning' ? 'bg-red-600 font-bold' : 'hover:bg-gray-700'}`}
+                >
+                  Scene 4: Weekend Planning
+                </button>
+              </div>
+
+              {/* Main Content Layout */}
+              <main className="max-w-7xl mx-auto px-6 py-8">
+                <div className="grid grid-cols-12 gap-8">
+                  
+                  {/* LEFT COLUMN - Identity (20%) */}
+                  <div className="col-span-12 lg:col-span-3">
+                     <AvatarWidget profile={USER_PROFILE} />
+                     <FiltersWidget activeFilters={activeFilters} toggleFilter={toggleFilter} />
+                  </div>
+
+                  {/* MIDDLE COLUMN - Smart Feed (50%) */}
+                  <div className="col-span-12 lg:col-span-6">
+                     {/* Today's Nutrition - Macro Cards */}
+                     <MacroCardsOverview nutrition={TODAY_NUTRITION} />
+                     
+                     {/* Dynamic Hero Section */}
+                     <div className="animate-in">
+                       <HeroCard context={context} />
+                     </div>
+
+                     {/* Discovery Feed */}
+                     <div>
+                        <div className="flex items-center justify-between mb-4">
+                           <h3 className="font-bold text-xl text-gray-800">Top picks for you</h3>
+                           <button className="text-red-600 text-sm font-semibold hover:underline">View map</button>
+                        </div>
+                        
+                        <div className="space-y-4">
+                           {RECOMMENDED_DISHES.map(dish => (
+                              <FeedCard key={dish.id} dish={dish} />
+                           ))}
+                        </div>
+                     </div>
+                     
+                     {/* Today's Meals Timeline - At Bottom */}
+                     <TodaysMealsTimeline nutrition={TODAY_NUTRITION} />
+                  </div>
+
+                  {/* RIGHT COLUMN - Progress (30%) */}
+                  <div className="col-span-12 lg:col-span-3">
+                     <RightPanel />
+                  </div>
+
+                </div>
+              </main>
+            </div>
+          );
+        };
+
+        // Render the app
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+
+    <!-- Load Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script>
+        lucide.createIcons();
+    </script>
+</body>
+</html>
